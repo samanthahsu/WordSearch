@@ -1,13 +1,9 @@
 package com.example.wordsearch;
 
-import android.app.Application;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.view.DragEvent;
 import android.view.MotionEvent;
-import android.view.View;
-import android.widget.Toast;
 
 public class WordSearchTextView extends androidx.appcompat.widget.AppCompatTextView {
     public static final int WORD_SEARCH_TEXT_SIZE = 25;
@@ -27,7 +23,7 @@ public class WordSearchTextView extends androidx.appcompat.widget.AppCompatTextV
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         setBackgroundColor(Color.YELLOW);
-        event.addBatch();
+        handleTouch()
         return true;
     }
 }

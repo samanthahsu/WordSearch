@@ -9,6 +9,7 @@ import android.widget.LinearLayout;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -18,10 +19,10 @@ public class MainActivity extends AppCompatActivity {
     TableLayout wordSearch;
     LinearLayout wordBank;
 
-    Orientation orientation = Orientation.UNDECIDED;
-    String selectedText = "";
-    Endpoint startLetter = new Endpoint(true);
-    Endpoint endLetter = new Endpoint(false);
+    static Orientation orientation = Orientation.UNDECIDED;
+    static String selectedText = "";
+    static Endpoint startLetter = new Endpoint(true);
+    static Endpoint endLetter = new Endpoint(false);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
      *  set selection as new end point
      *  append letter to the current word
      * else clear selection and start with selected letter as both endpoints with undecided orientation*/
-    public void handleTouch(int rowIndex, int colIndex, char letter) {
+    public static void handleTouch(int rowIndex, int colIndex, char letter) {
         switch (orientation) {
             case UNDECIDED:
                 startLetter.update(rowIndex, colIndex);
@@ -67,19 +68,31 @@ public class MainActivity extends AppCompatActivity {
 
     /** expected and actual are to make sure selections are linear
      * returns true if selection successfully extended*/
-    private boolean extendSelection(int expected, int actual, int startIndex, int endIndex, int actualIndex, char letter) {
+    private static boolean extendSelection(int expected, int actual, int startIndex, int endIndex, int actualIndex, char letter) {
         if (expected == actual) {
             if (actualIndex == startIndex-1) {
 //                todo means it will be added in front
+                updateEndpoint(startLetter, actual, actualIndex);
+                selectedText = String.valueOf(letter).concat(selectedText);
                 return true;
             } else if (actual == endIndex+1) {
 //                todo means it will be added in the back
+                updateEndpoint(endLetter, actual, actualIndex);
+                selectedText = selectedText.concat(String.valueOf(letter));
                 return true;
             }
         }
 
 //        todo otherwise reset and make new selection
         return false;
+    }
+
+    private static void updateEndpoint(Endpoint endpoint, int actual, int actualIndex) {
+        if ((orientation == Orientation.VERTICAL)) {
+            endpoint.update(actualIndex, actual);
+        } else {
+            endpoint.update(actual, actualIndex);
+        }
     }
 
     private void initWordBank(Context context) {
@@ -103,7 +116,7 @@ public class MainActivity extends AppCompatActivity {
 //            add each character in row as separate textView to tableRow
             for (int i = 0; i < row.length(); i++) {
 //                special textview format
-                TextView tempTextView = new WordSearchTextView(context);
+                TextView tempTextView = new WordSearchTextView(context, handleTouch(int, int, char));
                 tempTextView.setText(row.substring(i,i+1));
                 tempTableRow.addView(tempTextView);
             }
