@@ -1,3 +1,23 @@
 <resources>
     <string name="app_name">WordSearch</string>
+    <string-array name="test_content">
+        <item>togdoozqaz</item>
+        <item>veegkdxsgz</item>
+        <item>eeelbairav</item>
+        <item>kotlinhkpi</item>
+        <item>finfwbwbcr</item>
+        <item>erxfilolot</item>
+        <item>gtgbbwwmqb</item>
+        <item>ebxuqnswir</item>
+        <item>nsavajbuck</item>
+        <item>cevitcejbo</item>
+    </string-array>
+    <string-array name="test_words_list">
+        <item>Swift</item>
+        <item>Kotlin</item>
+        <item>ObjectiveC</item>
+        <item>Variable</item>
+        <item>Java</item>
+        <item>Mobile</item>
+    </string-array>
 </resources>
