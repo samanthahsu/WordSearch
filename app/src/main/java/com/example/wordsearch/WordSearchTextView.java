@@ -1,7 +1,6 @@
 package com.example.wordsearch;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.MotionEvent;
 
@@ -26,7 +25,8 @@ public class WordSearchTextView extends androidx.appcompat.widget.AppCompatTextV
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        MainActivity.handleTouch(this);
+        if (event.getAction() == MotionEvent.ACTION_DOWN)
+            MainActivity.handleTouch(this);
         return true;
     }
 }

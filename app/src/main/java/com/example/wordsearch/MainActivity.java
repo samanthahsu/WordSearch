@@ -56,50 +56,38 @@ public class MainActivity extends AppCompatActivity {
         int colIndex = wordSearchTextView.colIndex;
         char letter = wordSearchTextView.getText().charAt(0);
 
-        boolean resetNeeded = false;
         switch (orientation) {
             case UNDECIDED:
                 if (selectedTextViews.isEmpty()) {
-                    reassignRootLetter(rowIndex, colIndex, letter);
+                    reassignRootLetter(rowIndex, colIndex, letter, wordSearchTextView);
                 } else {
-                    resetNeeded = !setOrientationAndEndpoint(rowIndex, colIndex, letter);
+                    setOrientationAndEndpoint(rowIndex, colIndex, letter, wordSearchTextView);
                 }
                 break;
             case VERTICAL:
-                resetNeeded = !extendSelectionOrtho(startLetter.colIndex, colIndex, startLetter.rowIndex, endLetter.rowIndex, rowIndex, letter);
+                extendSelectionOrtho(startLetter.colIndex, colIndex, startLetter.rowIndex, endLetter.rowIndex, rowIndex, letter, wordSearchTextView);
                 break;
             case HORIZONTAL:
-                resetNeeded = !extendSelectionOrtho(startLetter.rowIndex, rowIndex, startLetter.colIndex, endLetter.colIndex, colIndex, letter);
+                extendSelectionOrtho(startLetter.rowIndex, rowIndex, startLetter.colIndex, endLetter.colIndex, colIndex, letter, wordSearchTextView);
                 break;
             case DIAGONAL_POSITIVE:
-                resetNeeded = !extendSelectionDiagonal(1, rowIndex, colIndex, letter);
+                extendSelectionDiagonal(1, rowIndex, colIndex, letter, wordSearchTextView);
+                break;
             case DIAGONAL_NEGATIVE:
-                resetNeeded = !extendSelectionDiagonal(-1, rowIndex, colIndex, letter);
-
+                extendSelectionDiagonal(-1, rowIndex, colIndex, letter, wordSearchTextView);
+                break;
         }
 
-//        selection indication cleared as needed
-        if (resetNeeded) {
-//            Toast.makeText(context, "reset", Toast.LENGTH_SHORT).show();
-            orientation = Orientation.UNDECIDED;
-            for (TextView tv :
-                    selectedTextViews) {
-                tv.setBackgroundColor(Color.TRANSPARENT);
-            }
-            selectedTextViews.clear();
-        }
-
-        //        indicate selection (will always be selected)
-        wordSearchTextView.setBackgroundColor(Color.YELLOW);
-        selectedTextViews.add(wordSearchTextView);
-
+//        debugging todo
         Toast.makeText(context,
-                "start: " + startLetter.rowIndex + " " + startLetter.colIndex + " \n" +
+                "list: " + selectedTextViews.size() + "\ncase:" + orientation + "\nstart: " + startLetter.rowIndex + " " + startLetter.colIndex + " \n" +
                         "end: " + endLetter.rowIndex + " " + endLetter.colIndex + "\nselectedtext: " + selectedText, Toast.LENGTH_SHORT).show();
     }
 
-    /** multiplier is slope of diagonal, should be -1 or 1*/
-    private static boolean extendSelectionDiagonal(int multiplier, int currRow, int currCol, char letter) {
+    /** multiplier is slope of diagonal, should be -1 or 1
+     * returns true if diagonal extended, does not need reset
+     * returns false when selection is cleared*/
+    private static boolean extendSelectionDiagonal(int multiplier, int currRow, int currCol, char letter, WordSearchTextView wordSearchTextView) {
         int startRow = startLetter.rowIndex;
         int startCol = startLetter.colIndex;
         int endCol = endLetter.colIndex;
@@ -107,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
 //                on the correct diagonal
                 if (currCol >= startCol && currCol <= endCol) {
 //                    nothing to be done, already selected
+                    return true;
                 } else if (currCol == startCol - 1) {
                     // becomes starting thing
                     startLetter.update(currRow, currCol);
@@ -116,54 +105,103 @@ public class MainActivity extends AppCompatActivity {
                     endLetter.update(currRow, currCol);
                     selectedText = String.valueOf(letter).concat(selectedText);
                 } else {
-//                    clear sleection
+//                    clear selection
+                    reassignRootLetter(currRow, currCol, letter, wordSearchTextView);
                     return false;
                 }
+                //        indicate selection (will always be selected)
+                wordSearchTextView.setBackgroundColor(Color.YELLOW);
+                selectedTextViews.add(wordSearchTextView);
                 return true;
             }
-            return false;
+        reassignRootLetter(currRow, currCol, letter, wordSearchTextView);
+        return false;
     }
 
     /** if given index is adjacent to the existing letter, sets orientation and appropriate endpoint and returns true
-     * otherwise, sets endpoints to the newly selected index and returns false*/
-    private static boolean setOrientationAndEndpoint(int rowIndex, int colIndex, char letter) {
+     * otherwise, sets endpoints to the newly selected index and returns false
+     * called when selecting the second letter*/
+    private static boolean setOrientationAndEndpoint(int rowIndex, int colIndex, char letter, WordSearchTextView wordSearchTextView) {
         int otherRowIndex = startLetter.rowIndex;
         int otherColIndex = startLetter.colIndex;
         if (rowIndex == otherRowIndex && colIndex == otherColIndex) {
 //            selected same thing, nothing need be done
+            return true;
         } else if (rowIndex == otherRowIndex+1 && colIndex == otherColIndex) {
 //                        bottom
             endLetter.update(rowIndex, colIndex);
+            orientation = Orientation.VERTICAL;
             selectedText = selectedText.concat(String.valueOf(letter));
         } else if (rowIndex == otherRowIndex-1 && colIndex == otherColIndex) {
 //                        top
             startLetter.update(rowIndex, colIndex);
+            orientation = Orientation.VERTICAL;
             selectedText = String.valueOf(letter).concat(selectedText);
         } else if (rowIndex == otherRowIndex && colIndex == otherColIndex+1) {
 //                        right
             endLetter.update(rowIndex, colIndex);
+            orientation = Orientation.HORIZONTAL;
             selectedText = selectedText.concat(String.valueOf(letter));
         } else if (rowIndex == otherRowIndex && colIndex == otherColIndex-1) {
 //                        left
+            orientation = Orientation.HORIZONTAL;
             startLetter.update(rowIndex, colIndex);
             selectedText = String.valueOf(letter).concat(selectedText);
+        } else if (rowIndex == otherRowIndex-1 && colIndex == otherColIndex-1) {
+//            top left
+            orientation = Orientation.DIAGONAL_NEGATIVE;
+            startLetter.update(rowIndex, colIndex);
+            selectedText = String.valueOf(letter).concat(selectedText);
+        } else if (rowIndex == otherRowIndex-1 && colIndex == otherColIndex+1) {
+//            top right
+            orientation = Orientation.DIAGONAL_POSITIVE;
+            endLetter.update(rowIndex, colIndex);
+            selectedText = selectedText.concat(String.valueOf(letter));
+        } else if (rowIndex == otherRowIndex+1 && colIndex == otherColIndex-1) {
+//            bottom left
+            orientation = Orientation.DIAGONAL_POSITIVE;
+            startLetter.update(rowIndex, colIndex);
+            selectedText = String.valueOf(letter).concat(selectedText);
+        } else if (rowIndex == otherRowIndex+1 && colIndex == otherColIndex+1) {
+//            bottom right
+            orientation = Orientation.DIAGONAL_NEGATIVE;
+            endLetter.update(rowIndex, colIndex);
+            selectedText = selectedText.concat(String.valueOf(letter));
         } else {
 //            if not adjacent
-            reassignRootLetter(rowIndex, colIndex, letter);
+            reassignRootLetter(rowIndex, colIndex, letter, wordSearchTextView);
             return false;
         }
+        //        indicate selection (will always be selected)
+        wordSearchTextView.setBackgroundColor(Color.YELLOW);
+        selectedTextViews.add(wordSearchTextView);
         return true;
     }
 
-    private static void reassignRootLetter(int rowIndex, int colIndex, char letter) {
+    private static void reassignRootLetter(int rowIndex, int colIndex, char letter, WordSearchTextView selectedView) {
+
+        //        selection indication cleared as needed
+        Toast.makeText(context, "reset", Toast.LENGTH_SHORT).show();
+        orientation = Orientation.UNDECIDED;
+        for (TextView tv :
+                selectedTextViews) {
+            tv.setBackgroundColor(Color.TRANSPARENT);
+        }
+        selectedTextViews.clear();
+
         startLetter.update(rowIndex, colIndex);
         endLetter.update(rowIndex, colIndex);
         selectedText = String.valueOf(letter);
+
+        //        indicate selection (will always be selected)
+        selectedView.setBackgroundColor(Color.YELLOW);
+        selectedTextViews.add(selectedView);
+
     }
 
     /** expected and actual are to make sure selections are linear
      * returns true if selection successfully extended*/
-    private static boolean extendSelectionOrtho(int expected, int actual, int startIndex, int endIndex, int actualIndex, char letter) {
+    private static boolean extendSelectionOrtho(int expected, int actual, int startIndex, int endIndex, int actualIndex, char letter, WordSearchTextView wordSearchTextView) {
 //        Toast.makeText(context, expected + actual, Toast.LENGTH_SHORT).show();
         if (expected == actual) {
             if (actualIndex >= startIndex && actualIndex <= endIndex) {
@@ -182,6 +220,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 //         otherwise reset
+        reassignRootLetter(wordSearchTextView.rowIndex, wordSearchTextView.colIndex, letter, wordSearchTextView);
         return false;
     }
 
