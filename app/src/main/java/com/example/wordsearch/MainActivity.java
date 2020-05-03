@@ -5,47 +5,63 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
 
     public static final int WORD_BANK_TEXT_SIZE = 15;
+    public static final int SELECTION_COLOUR = Color.YELLOW;
     TableLayout wordSearch;
     LinearLayout wordBank;
+    Button button;
     static Context context;
 
 
     static Orientation orientation = Orientation.UNDECIDED;
     static String selectedText = "";
 //    start letter is the topmost for vertical, the leftmost for diagonal and horizontal
-    static Endpoint startLetter = new Endpoint(true);
-    static Endpoint endLetter = new Endpoint(false);
+    static Endpoint startLetter = new Endpoint();
+    static Endpoint endLetter = new Endpoint();
     static List<WordSearchTextView> selectedTextViews = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Objects.requireNonNull(this.getSupportActionBar()).hide();
         context = getApplicationContext();
 
         wordSearch = findViewById(R.id.word_search_grid);
         wordBank = findViewById(R.id.word_bank);
+        button = findViewById(R.id.button);
 
-        initWordSearch(context);
-        initWordBank(context);
-
+        startGame();
     }
 
-    /** callback from textview
+    private void startGame() {
+        button.setText(getResources().getString(R.string.submit_word));
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                submitWord(v);
+            }
+        });
+        wordSearch.removeAllViews();
+        initWordSearch(context);
+        initWordBank(context);
+    }
+
+    /** callback from textView
      * uses row and column to determine actions
      * if endpoint letters are adjacent and matching orientation to the selection
      *  set selection as new end point
@@ -65,10 +81,10 @@ public class MainActivity extends AppCompatActivity {
                 }
                 break;
             case VERTICAL:
-                extendSelectionOrtho(startLetter.colIndex, colIndex, startLetter.rowIndex, endLetter.rowIndex, rowIndex, letter, wordSearchTextView);
+                extendSelectionOrthogonal(startLetter.colIndex, colIndex, startLetter.rowIndex, endLetter.rowIndex, rowIndex, letter, wordSearchTextView);
                 break;
             case HORIZONTAL:
-                extendSelectionOrtho(startLetter.rowIndex, rowIndex, startLetter.colIndex, endLetter.colIndex, colIndex, letter, wordSearchTextView);
+                extendSelectionOrthogonal(startLetter.rowIndex, rowIndex, startLetter.colIndex, endLetter.colIndex, colIndex, letter, wordSearchTextView);
                 break;
             case DIAGONAL_POSITIVE:
                 extendSelectionDiagonal(1, rowIndex, colIndex, letter, wordSearchTextView);
@@ -78,55 +94,53 @@ public class MainActivity extends AppCompatActivity {
                 break;
         }
 
-//        debugging todo
-        Toast.makeText(context,
-                "list: " + selectedTextViews.size() + "\ncase:" + orientation + "\nstart: " + startLetter.rowIndex + " " + startLetter.colIndex + " \n" +
-                        "end: " + endLetter.rowIndex + " " + endLetter.colIndex + "\nselectedtext: " + selectedText, Toast.LENGTH_SHORT).show();
+////      todo debugging
+//        Toast.makeText(context,
+//                "list: " + selectedTextViews.size() + "\ncase:" + orientation + "\nstart: " + startLetter.rowIndex + " " + startLetter.colIndex + " \n" +
+//                        "end: " + endLetter.rowIndex + " " + endLetter.colIndex + "\nselectedtext: " + selectedText, Toast.LENGTH_SHORT).show();
     }
 
     /** multiplier is slope of diagonal, should be -1 or 1
      * returns true if diagonal extended, does not need reset
      * returns false when selection is cleared*/
-    private static boolean extendSelectionDiagonal(int multiplier, int currRow, int currCol, char letter, WordSearchTextView wordSearchTextView) {
+    private static void extendSelectionDiagonal(int multiplier, int currRow, int currCol, char letter, WordSearchTextView wordSearchTextView) {
         int startRow = startLetter.rowIndex;
         int startCol = startLetter.colIndex;
         int endCol = endLetter.colIndex;
-            if (startRow + multiplier * (currCol - startCol) == currRow) {
-//                on the correct diagonal
+        //                test if on the correct diagonal
+        if (startRow - multiplier * (currCol - startCol) == currRow) {
                 if (currCol >= startCol && currCol <= endCol) {
 //                    nothing to be done, already selected
-                    return true;
+                    return;
                 } else if (currCol == startCol - 1) {
                     // becomes starting thing
                     startLetter.update(currRow, currCol);
-                    selectedText = selectedText.concat(String.valueOf(letter));
+                    selectedText = String.valueOf(letter).concat(selectedText);
                 } else if (currCol == endCol + 1) {
 //                becomes ending thing
                     endLetter.update(currRow, currCol);
-                    selectedText = String.valueOf(letter).concat(selectedText);
+                    selectedText = selectedText.concat(String.valueOf(letter));
                 } else {
 //                    clear selection
                     reassignRootLetter(currRow, currCol, letter, wordSearchTextView);
-                    return false;
+                    return;
                 }
                 //        indicate selection (will always be selected)
-                wordSearchTextView.setBackgroundColor(Color.YELLOW);
-                selectedTextViews.add(wordSearchTextView);
-                return true;
+            selectView(wordSearchTextView);
+            return;
             }
         reassignRootLetter(currRow, currCol, letter, wordSearchTextView);
-        return false;
     }
 
     /** if given index is adjacent to the existing letter, sets orientation and appropriate endpoint and returns true
      * otherwise, sets endpoints to the newly selected index and returns false
      * called when selecting the second letter*/
-    private static boolean setOrientationAndEndpoint(int rowIndex, int colIndex, char letter, WordSearchTextView wordSearchTextView) {
+    private static void setOrientationAndEndpoint(int rowIndex, int colIndex, char letter, WordSearchTextView wordSearchTextView) {
         int otherRowIndex = startLetter.rowIndex;
         int otherColIndex = startLetter.colIndex;
         if (rowIndex == otherRowIndex && colIndex == otherColIndex) {
 //            selected same thing, nothing need be done
-            return true;
+            return;
         } else if (rowIndex == otherRowIndex+1 && colIndex == otherColIndex) {
 //                        bottom
             endLetter.update(rowIndex, colIndex);
@@ -170,18 +184,15 @@ public class MainActivity extends AppCompatActivity {
         } else {
 //            if not adjacent
             reassignRootLetter(rowIndex, colIndex, letter, wordSearchTextView);
-            return false;
+            return;
         }
         //        indicate selection (will always be selected)
-        wordSearchTextView.setBackgroundColor(Color.YELLOW);
-        selectedTextViews.add(wordSearchTextView);
-        return true;
+        selectView(wordSearchTextView);
     }
 
     private static void reassignRootLetter(int rowIndex, int colIndex, char letter, WordSearchTextView selectedView) {
 
         //        selection indication cleared as needed
-        Toast.makeText(context, "reset", Toast.LENGTH_SHORT).show();
         orientation = Orientation.UNDECIDED;
         for (TextView tv :
                 selectedTextViews) {
@@ -194,38 +205,42 @@ public class MainActivity extends AppCompatActivity {
         selectedText = String.valueOf(letter);
 
         //        indicate selection (will always be selected)
-        selectedView.setBackgroundColor(Color.YELLOW);
-        selectedTextViews.add(selectedView);
-
+        selectView(selectedView);
     }
 
-    /** expected and actual are to make sure selections are linear
+//    sets view bg to yellow, and adds view to selected view list
+    private static void selectView(WordSearchTextView selectedView) {
+        selectedView.setBackgroundColor(SELECTION_COLOUR);
+        selectedTextViews.add(selectedView);
+    }
+
+    /** expected and actualAlignment are to make sure selections are linear
      * returns true if selection successfully extended*/
-    private static boolean extendSelectionOrtho(int expected, int actual, int startIndex, int endIndex, int actualIndex, char letter, WordSearchTextView wordSearchTextView) {
-//        Toast.makeText(context, expected + actual, Toast.LENGTH_SHORT).show();
-        if (expected == actual) {
+    private static void extendSelectionOrthogonal(int expectedAlignment, int actualAlignment, int startIndex, int endIndex, int actualIndex, char letter, WordSearchTextView wordSearchTextView) {
+        if (expectedAlignment == actualAlignment) {
             if (actualIndex >= startIndex && actualIndex <= endIndex) {
-//                select already selected
-                return true;
+//                already selected, do nothing
+                return;
             } else if (actualIndex == startIndex-1) {
 //                 means it will be added in front
-                updateEndpoint(startLetter, actual, actualIndex);
+                updateEndpoint(startLetter, actualAlignment, actualIndex);
                 selectedText = String.valueOf(letter).concat(selectedText);
-                return true;
-            } else if (actual == endIndex+1) {
+                selectView(wordSearchTextView);
+                return;
+            } else if (actualIndex == endIndex+1) {
 //                 means it will be added in the back
-                updateEndpoint(endLetter, actual, actualIndex);
+                updateEndpoint(endLetter, actualAlignment, actualIndex);
                 selectedText = selectedText.concat(String.valueOf(letter));
-                return true;
+                selectView(wordSearchTextView);
+                return;
             }
         }
 //         otherwise reset
         reassignRootLetter(wordSearchTextView.rowIndex, wordSearchTextView.colIndex, letter, wordSearchTextView);
-        return false;
     }
 
     private static void updateEndpoint(Endpoint endpoint, int actual, int actualIndex) {
-        if ((orientation == Orientation.VERTICAL)) {
+        if (orientation == Orientation.VERTICAL) {
             endpoint.update(actualIndex, actual);
         } else {
             endpoint.update(actual, actualIndex);
@@ -273,13 +288,25 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         if (wordBank.getChildCount() == 0) {
-            wordBank.removeAllViews();
-            TextView end = new TextView(context);
-            end.setText("Congratulations, You Win!");
+            handleWin();
         }
     }
 
-//    returns true if the two strings are equal backwards and or forwards
+    private void handleWin() {
+        TextView endText = new TextView(context);
+        endText.setText("Congratulations, You Win!");
+        wordBank.addView(endText);
+        button.setText("Play Again");
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startGame();
+                wordBank.removeAllViews();
+            }
+        });
+    }
+
+    //    returns true if the two strings are equal backwards and or forwards
     private boolean wordsEqual(String text, String selectedText) {
         int length = text.length();
         if (length != selectedText.length()) return false;
@@ -297,13 +324,8 @@ public class MainActivity extends AppCompatActivity {
     private static class Endpoint {
         private int rowIndex;
         private int colIndex;
-        private boolean isLeftorTop;
 
-        Endpoint(boolean isLeftorTop) {
-            this.isLeftorTop = isLeftorTop;
-        }
-
-        public void update(int rowIndex, int colIndex) {
+        void update(int rowIndex, int colIndex) {
             this.rowIndex = rowIndex;
             this.colIndex = colIndex;
         }
